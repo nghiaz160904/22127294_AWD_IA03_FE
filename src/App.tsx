@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
 import './index.css';
+import { Toaster } from 'react-hot-toast';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -24,6 +25,30 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+            success: {
+              duration: 3000,
+              iconTheme: {
+                primary: '#4ade80',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              duration: 5000,
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import type { BackendErrorResponse } from '../types/authType';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -42,6 +43,12 @@ const Register: React.FC = () => {
     // In your register component
     try {
       await register(formData.email, formData.password);
+
+      // Show success toast
+      toast.success('Đăng ký thành công! Chào mừng bạn đến với hệ thống.', {
+        duration: 3000,
+      });
+
       navigate('/');
     } catch (err: unknown) {
       // Check if it's an axios error with response data
@@ -52,23 +59,41 @@ const Register: React.FC = () => {
         if (errorData.validationErrors && Object.keys(errorData.validationErrors).length > 0) {
           // Get the first validation error message
           const firstError = Object.values(errorData.validationErrors)[0];
-          setError(firstError || 'Đăng ký thất bại');
+          const errorMessage = firstError || 'Đăng ký thất bại';
 
-          // Or combine all validation errors
+          setError(errorMessage);
+          toast.error(errorMessage, {
+            duration: 5000,
+          });
+
+          // Or show all validation errors
           // const allErrors = Object.entries(errorData.validationErrors)
           //   .map(([field, msg]) => `${field}: ${msg}`)
-          //   .join(', ');
+          //   .join('\n');
           // setError(allErrors);
+          // toast.error(allErrors, { duration: 5000 });
         } else if (errorData.message) {
           // Handle other backend errors (like email already exists)
           setError(errorData.message);
+          toast.error(errorData.message, {
+            duration: 4000,
+          });
         } else {
           setError('Đăng ký thất bại');
+          toast.error('Đăng ký thất bại. Vui lòng thử lại.', {
+            duration: 4000,
+          });
         }
       } else if (err instanceof Error) {
         setError(err.message);
+        toast.error(err.message, {
+          duration: 4000,
+        });
       } else {
         setError('Đăng ký thất bại');
+        toast.error('Đã có lỗi xảy ra. Vui lòng thử lại.', {
+          duration: 4000,
+        });
       }
     } finally {
       setIsLoading(false);
