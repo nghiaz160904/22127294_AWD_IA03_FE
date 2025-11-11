@@ -1,134 +1,108 @@
-import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import type { BackendErrorResponse } from '../types/authType';
-import axios from 'axios';
-import toast from 'react-hot-toast';
 
-const Register: React.FC = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-  });
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+type RegisterFormData = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+};
 
-  const { register } = useAuth();
+export default function RegisterPage() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    watch,
+  } = useForm<RegisterFormData>();
+  const { registerMutation } = useAuth();
   const navigate = useNavigate();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
+  const password = watch('password');
+
+  const onSubmit = (data: RegisterFormData) => {
+    const registerData = {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      password: data.password,
+    };  
+    registerMutation.mutate(registerData, {
+      onSuccess: () => {
+        navigate('/');
+      },
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('Mật khẩu không khớp');
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError('Mật khẩu phải có ít nhất 6 ký tự');
-      return;
-    }
-
-    setIsLoading(true);
-
-    // In your register component
-    try {
-      await register(formData.email, formData.password);
-
-      // Show success toast
-      toast.success('Đăng ký thành công! Chào mừng bạn đến với hệ thống.', {
-        duration: 3000,
-      });
-
-      navigate('/');
-    } catch (err: unknown) {
-      // Check if it's an axios error with response data
-      if (axios.isAxiosError(err) && err.response?.data) {
-        const errorData = err.response.data as BackendErrorResponse;
-
-        // Handle validation errors
-        if (errorData.validationErrors && Object.keys(errorData.validationErrors).length > 0) {
-          // Get the first validation error message
-          const firstError = Object.values(errorData.validationErrors)[0];
-          const errorMessage = firstError || 'Đăng ký thất bại';
-
-          setError(errorMessage);
-          toast.error(errorMessage, {
-            duration: 5000,
-          });
-
-          // Or show all validation errors
-          // const allErrors = Object.entries(errorData.validationErrors)
-          //   .map(([field, msg]) => `${field}: ${msg}`)
-          //   .join('\n');
-          // setError(allErrors);
-          // toast.error(allErrors, { duration: 5000 });
-        } else if (errorData.message) {
-          // Handle other backend errors (like email already exists)
-          setError(errorData.message);
-          toast.error(errorData.message, {
-            duration: 4000,
-          });
-        } else {
-          setError('Đăng ký thất bại');
-          toast.error('Đăng ký thất bại. Vui lòng thử lại.', {
-            duration: 4000,
-          });
-        }
-      } else if (err instanceof Error) {
-        setError(err.message);
-        toast.error(err.message, {
-          duration: 4000,
-        });
-      } else {
-        setError('Đăng ký thất bại');
-        toast.error('Đã có lỗi xảy ra. Vui lòng thử lại.', {
-          duration: 4000,
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4 py-8">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Đăng ký BusGo</h1>
-          <p className="text-gray-600">Tạo tài khoản mới để đặt vé 🚌</p>
+          <p className="text-gray-600">Tạo tài khoản mới để bắt đầu! 🚌</p>
         </div>
 
-        {error && (
+        {registerMutation.isError && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg">
-            {error}
+            Đăng ký thất bại. Vui lòng thử lại.
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                Họ
+              </label>
+              <input
+                id="firstName"
+                type="text"
+                {...register('firstName', { required: 'Họ là bắt buộc' })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="Nguyễn"
+              />
+              {errors.firstName && (
+                <p className="mt-1 text-sm text-red-600">{errors.firstName.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                Tên
+              </label>
+              <input
+                id="lastName"
+                type="text"
+                {...register('lastName', { required: 'Tên là bắt buộc' })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="Văn A"
+              />
+              {errors.lastName && (
+                <p className="mt-1 text-sm text-red-600">{errors.lastName.message}</p>
+              )}
+            </div>
+          </div>
+
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
               Email
             </label>
             <input
               id="email"
-              name="email"
               type="email"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+              {...register('email', {
+                required: 'Email là bắt buộc',
+                pattern: {
+                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                  message: 'Email không hợp lệ',
+                },
+              })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
               placeholder="your@email.com"
             />
+            {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>}
           </div>
 
           <div>
@@ -137,14 +111,20 @@ const Register: React.FC = () => {
             </label>
             <input
               id="password"
-              name="password"
               type="password"
-              required
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+              {...register('password', {
+                required: 'Mật khẩu là bắt buộc',
+                minLength: {
+                  value: 6,
+                  message: 'Mật khẩu phải có ít nhất 6 ký tự',
+                },
+              })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
               placeholder="••••••••"
             />
+            {errors.password && (
+              <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+            )}
           </div>
 
           <div>
@@ -156,36 +136,37 @@ const Register: React.FC = () => {
             </label>
             <input
               id="confirmPassword"
-              name="confirmPassword"
               type="password"
-              required
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+              {...register('confirmPassword', {
+                required: 'Vui lòng xác nhận mật khẩu',
+                validate: (value) => value === password || 'Mật khẩu không khớp',
+              })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
               placeholder="••••••••"
             />
+            {errors.confirmPassword && (
+              <p className="mt-1 text-sm text-red-600">{errors.confirmPassword.message}</p>
+            )}
           </div>
 
           <button
             type="submit"
-            disabled={isLoading}
-            className="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={registerMutation.isPending}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? 'Đang đăng ký...' : 'Đăng ký'}
+            {registerMutation.isPending ? 'Đang đăng ký...' : 'Đăng ký'}
           </button>
         </form>
 
         <div className="mt-6 text-center">
           <p className="text-gray-600">
             Đã có tài khoản?{' '}
-            <Link to="/login" className="text-purple-600 hover:text-purple-700 font-semibold">
-              Đăng nhập
+            <Link to="/login" className="text-blue-600 hover:text-blue-700 font-semibold">
+              Đăng nhập ngay
             </Link>
           </p>
         </div>
       </div>
     </div>
   );
-};
-
-export default Register;
+}

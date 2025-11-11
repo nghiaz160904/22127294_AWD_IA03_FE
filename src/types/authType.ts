@@ -1,24 +1,19 @@
-import type { User } from './userType';
+export interface AuthenticationResponse {
+  accessToken: string;
+  refreshToken: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
 export interface LoginRequest {
   email: string;
   password: string;
 }
 
 export interface RegisterRequest {
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
-}
-
-export interface AuthResponse {
-  user: User;
-}
-
-// Type for backend error response
-export interface BackendErrorResponse {
-  timestamp: string;
-  status: number;
-  error: string;
-  message: string;
-  path: string;
-  validationErrors?: Record<string, string>;
 }

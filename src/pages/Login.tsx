@@ -1,33 +1,27 @@
-import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useNavigate, Link } from 'react-router-dom';
-// import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../hooks/useAuth';
 
-const Login: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+type FormData = {
+  email: string;
+  password: string;
+};
 
-  // const { login } = useAuth();
+export default function LoginPage() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormData>();
+  const { loginMutation } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
-
-    try {
-      // await login(email, password);
-      navigate('/');
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Đăng nhập thất bại');
-      }
-    } finally {
-      setIsLoading(false);
-    }
+  const onSubmit = (data: FormData) => {
+    loginMutation.mutate(data, {
+      onSuccess: () => {
+        navigate('/');
+      },
+    });
   };
 
   return (
@@ -38,13 +32,13 @@ const Login: React.FC = () => {
           <p className="text-gray-600">Chào mừng bạn trở lại! 🚌</p>
         </div>
 
-        {error && (
+        {loginMutation.isError && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg">
-            {error}
+            Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
               Email
@@ -52,12 +46,11 @@ const Login: React.FC = () => {
             <input
               id="email"
               type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              {...register('email', { required: 'Email là bắt buộc' })}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
               placeholder="your@email.com"
             />
+            {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>}
           </div>
 
           <div>
@@ -67,20 +60,21 @@ const Login: React.FC = () => {
             <input
               id="password"
               type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              {...register('password', { required: 'Mật khẩu là bắt buộc' })}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
               placeholder="••••••••"
             />
+            {errors.password && (
+              <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+            )}
           </div>
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={loginMutation.isPending}
             className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            {loginMutation.isPending ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
         </form>
 
@@ -95,6 +89,4 @@ const Login: React.FC = () => {
       </div>
     </div>
   );
-};
-
-export default Login;
+}
