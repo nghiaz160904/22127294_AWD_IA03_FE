@@ -12,7 +12,12 @@ export default function LoginPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<FormData>();
+  } = useForm<FormData>({
+    defaultValues: {
+      email: 'nghialk11@gmail.com',
+      password: 'password',
+    },
+  });
   const { loginMutation } = useAuth();
   const navigate = useNavigate();
 
