@@ -1,6 +1,9 @@
 import axios from 'axios';
-import type { AxiosRequestConfig, InternalAxiosRequestConfig, AxiosError } from 'axios';
-const API_URL = 'http://localhost:8080/api';
+import type { InternalAxiosRequestConfig, AxiosError } from 'axios';
+const rawBE = import.meta.env.VITE_BE_URL || 'http://localhost:8080';
+
+// đảm bảo có '/api' ở cuối
+const API_URL = rawBE.replace(/\/+$/, '') + '/api';
 
 let accessToken: string | null = null;
 
