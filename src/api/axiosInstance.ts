@@ -1,5 +1,10 @@
 import axios from 'axios';
-import type { InternalAxiosRequestConfig, AxiosError } from 'axios';
+import type {
+  InternalAxiosRequestConfig,
+  AxiosError,
+  AxiosRequestHeaders,
+  AxiosRequestConfig,
+} from 'axios';
 const rawBE = import.meta.env.VITE_BE_URL || 'http://localhost:8080';
 
 // đảm bảo có '/api' ở cuối
@@ -16,11 +21,15 @@ export const setTokens = (access: string, refresh: string) => {
   localStorage.setItem('refreshToken', refresh);
   // ensure axios defaults immediately use the latest access token
   if (access) {
-    axiosInstance.defaults.headers.common = axiosInstance.defaults.headers.common || {};
-    (axiosInstance.defaults.headers.common as any).Authorization = `Bearer ${access}`;
+    // ensure defaults.headers object exists
+    axiosInstance.defaults.headers = axiosInstance.defaults.headers || {};
+    // cast via unknown first to satisfy TypeScript's structural checks
+    (
+      axiosInstance.defaults.headers as unknown as AxiosRequestHeaders
+    ).Authorization = `Bearer ${access}`;
   } else {
-    if (axiosInstance.defaults.headers?.common)
-      delete (axiosInstance.defaults.headers.common as any).Authorization;
+    if (axiosInstance.defaults.headers)
+      delete (axiosInstance.defaults.headers as unknown as AxiosRequestHeaders).Authorization;
   }
 };
 
@@ -39,8 +48,8 @@ export const clearTokens = () => {
   localStorage.removeItem('refreshToken');
 
   // remove default header
-  if (axiosInstance.defaults.headers?.common)
-    delete (axiosInstance.defaults.headers.common as any).Authorization;
+  if (axiosInstance.defaults.headers)
+    delete (axiosInstance.defaults.headers as unknown as AxiosRequestHeaders).Authorization;
 
   // navigate to login immediately after logout/clearing tokens
   window.location.href = '/login';
@@ -52,21 +61,24 @@ export const axiosInstance = axios.create({
   baseURL: API_URL,
 });
 
+// extended config type with our private controller field
+type ExtendedInternalConfig = InternalAxiosRequestConfig & { __abortController?: AbortController };
+
 axiosInstance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (accessToken) {
     // ensure headers object exists and use a compatible cast
     config.headers = config.headers || {};
-    (config.headers as any).Authorization = `Bearer ${accessToken}`;
+    (config.headers as AxiosRequestHeaders).Authorization = `Bearer ${accessToken}`;
   }
 
   // attach an AbortController to every outgoing request so we can cancel on logout
   const controller = new AbortController();
   // store the signal on the config (axios supports signal)
-  (config as any).signal = controller.signal;
+  (config as ExtendedInternalConfig).signal = controller.signal;
   // track controller for later abort
   pendingControllers.add(controller);
   // keep a reference to the controller on the config for cleanup
-  (config as any).__abortController = controller;
+  (config as ExtendedInternalConfig).__abortController = controller;
 
   return config;
 });
@@ -75,7 +87,9 @@ axiosInstance.interceptors.response.use(
   (res) => {
     // remove controller for this completed request
     try {
-      const controller = (res.config as any).__abortController as AbortController | undefined;
+      const controller = (res.config as ExtendedInternalConfig).__abortController as
+        | AbortController
+        | undefined;
       if (controller) pendingControllers.delete(controller);
     } catch {
       /* ignore */
@@ -85,9 +99,9 @@ axiosInstance.interceptors.response.use(
   async (err: AxiosError) => {
     // remove controller for this errored request
     try {
-      const cfg = err.config as InternalAxiosRequestConfig | undefined;
+      const cfg = err.config as ExtendedInternalConfig | undefined;
       if (cfg) {
-        const controller = (cfg as any).__abortController as AbortController | undefined;
+        const controller = cfg.__abortController as AbortController | undefined;
         if (controller) pendingControllers.delete(controller);
       }
     } catch {
@@ -95,10 +109,11 @@ axiosInstance.interceptors.response.use(
     }
 
     // if the request was cancelled (e.g., due to logout), just reject
+    const errFields = err as unknown as { name?: string; code?: string };
     if (
       axios.isCancel
         ? axios.isCancel(err)
-        : (err as any).name === 'CanceledError' || (err as any).code === 'ERR_CANCELED'
+        : errFields.name === 'CanceledError' || errFields.code === 'ERR_CANCELED'
     ) {
       return Promise.reject(err);
     }
@@ -111,11 +126,12 @@ axiosInstance.interceptors.response.use(
           const newAccess = res.data.accessToken;
           const newRefresh = res.data.refreshToken;
           setTokens(newAccess, newRefresh);
-          const cfg = err.config as InternalAxiosRequestConfig | undefined;
+          const cfg = err.config as ExtendedInternalConfig | undefined;
           if (cfg && cfg.headers) {
-            (cfg.headers as any).Authorization = `Bearer ${newAccess}`;
+            (cfg.headers as AxiosRequestHeaders).Authorization = `Bearer ${newAccess}`;
           }
-          return axiosInstance(err.config as any);
+          // retry original request using a properly typed AxiosRequestConfig
+          return axiosInstance.request(err.config as unknown as AxiosRequestConfig);
         } catch {
           clearTokens();
           // clearTokens already navigates
@@ -132,10 +148,12 @@ axiosInstance.interceptors.response.use(
 export const setAccessToken = (token: string) => {
   accessToken = token;
   if (token) {
-    axiosInstance.defaults.headers.common = axiosInstance.defaults.headers.common || {};
-    (axiosInstance.defaults.headers.common as any).Authorization = `Bearer ${token}`;
+    axiosInstance.defaults.headers = axiosInstance.defaults.headers || {};
+    (
+      axiosInstance.defaults.headers as unknown as AxiosRequestHeaders
+    ).Authorization = `Bearer ${token}`;
   } else {
-    if (axiosInstance.defaults.headers?.common)
-      delete (axiosInstance.defaults.headers.common as any).Authorization;
+    if (axiosInstance.defaults.headers)
+      delete (axiosInstance.defaults.headers as unknown as AxiosRequestHeaders).Authorization;
   }
 };
